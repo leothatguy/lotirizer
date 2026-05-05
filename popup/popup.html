@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lotirizer</title>
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="title-bar">
+            <img src="/assets/icon128.png" alt="Lotirizer icon" class="icon">
+            <div>
+                <h1>Lotirizer</h1>
+                <p class="subtitle">AI Page Summarizer</p>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="pageInfo" class="page-info">
+            <h2 id="pageTitle" class="truncate">Loading...</h2>
+        </div>
+        
+        <div id="actionArea">
+            <button id="summarizeBtn" class="primary-btn">Summarize Page</button>
+        </div>
+
+        <div id="loadingArea" class="hidden">
+            <div class="spinner"></div>
+            <p>Analyzing and summarizing content...</p>
+        </div>
+
+        <div id="errorArea" class="hidden status error">
+            <p id="errorMessage">An error occurred.</p>
+        </div>
+
+        <div id="resultArea" class="hidden">
+            <div class="result-header">
+                <h3>Summary</h3>
+                <div class="result-actions">
+                    <button id="copyBtn" aria-label="Copy" title="Copy to clipboard">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                    <button id="resetBtn" aria-label="Reset" title="Clear summary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="summaryContent" class="markdown-content"></div>
+        </div>
+    </main>
+    <script src="popup.js"></script>
+</body>
+</html>

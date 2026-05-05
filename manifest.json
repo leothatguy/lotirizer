@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Lotirizer",
+  "version": "1.0",
+  "description": "Lotirizer - AI page summarizer for concise insights from any article.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Lotirizer",
+    "default_icon": {
+      "16": "assets/icon128.png",
+      "48": "assets/icon128.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "icons": {
+    "16": "assets/icon128.png",
+    "48": "assets/icon128.png",
+    "128": "assets/icon128.png"
+  }
+}
