@@ -23,12 +23,13 @@ async function handleSummarize(url, content, title) {
   }
 
   const apiUrl = 'https://lotirizer-be-production.up.railway.app/api/summarize';
+  const estimatedReadMinutes = Math.max(1, Math.ceil(countWords(content) / 238));
 
-  const prompt = `You are an expert AI summarizer. Please read the following web page content and provide a concise, structured summary.
-Include:
-1. A brief overview (1-2 sentences).
-2. Key Insights formatted as bullet points.
-3. An estimated reading time for the original text (based on an average reading speed of 238 words per minute).
+  const prompt = `You are an expert AI summarizer. Read the page content and return a clear, structured markdown summary.
+Requirements:
+1. Overview: Write 1-2 complete sentences that capture the main point.
+2. Key Insights: Provide 4-6 bullet points with concrete details.
+3. Add a final line exactly in this format: "Estimated Reading Time: ${estimatedReadMinutes} min read".
 
 Please use markdown formatting for the response.
 
@@ -73,10 +74,34 @@ ${content}
     }
 
     const data = await response.json();
-    const summaryText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    let summaryText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!summaryText) {
       throw new Error('Unexpected response format from Gemini API.');
+    }
+
+    if (countSentences(summaryText) < 1 || !containsBulletList(summaryText)) {
+      const expansionPrompt = `${prompt}
+
+Important correction: keep the Overview to 1-2 sentences and ensure Key Insights are returned as a bullet list with concrete points.`;
+      const expansionResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, prompt: expansionPrompt }),
+        signal: controller.signal
+      });
+
+      if (expansionResponse.ok) {
+        const expansionData = await expansionResponse.json();
+        const expandedText = expansionData?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (expandedText) {
+          summaryText = expandedText;
+        }
+      }
+    }
+
+    if (!/estimated\s+reading\s+time:/i.test(summaryText)) {
+      summaryText = `${summaryText}\n\nEstimated Reading Time: ${estimatedReadMinutes} min read`;
     }
 
     await chrome.storage.local.set({ [cacheKey]: summaryText });
@@ -103,4 +128,20 @@ function safeNormalizeUrl(rawUrl) {
   } catch {
     return rawUrl || 'unknown';
   }
+}
+
+function countWords(text) {
+  if (!text) return 0;
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function countSentences(text) {
+  if (!text) return 0;
+  const matches = text.match(/[.!?]+(\s|$)/g);
+  return matches ? matches.length : 0;
+}
+
+function containsBulletList(text) {
+  if (!text) return false;
+  return /^(\s*[-*]|\s*\d+\.)\s+/m.test(text);
 }

@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const errorMessageEl = document.getElementById('errorMessage');
     const resultArea = document.getElementById('resultArea');
     const summaryContent = document.getElementById('summaryContent');
+    const readTimeTag = document.getElementById('readTimeTag');
     
     const copyBtn = document.getElementById('copyBtn');
     const resetBtn = document.getElementById('resetBtn');
@@ -125,6 +126,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadingArea.classList.add('hidden');
         resultArea.classList.add('hidden');
         actionArea.classList.remove('hidden');
+        readTimeTag.classList.add('hidden');
+        readTimeTag.textContent = '';
         
         errorMessageEl.innerHTML = '';
         errorMessageEl.textContent = message;
@@ -136,8 +139,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadingArea.classList.add('hidden');
         errorArea.classList.add('hidden');
         actionArea.classList.add('hidden');
-        
-        summaryContent.innerHTML = parseMarkdown(text);
+
+        const parsedSummary = parseSummarySections(text);
+        summaryContent.innerHTML = renderSummaryHtml(parsedSummary);
+        if (parsedSummary.readTime) {
+            readTimeTag.textContent = parsedSummary.readTime;
+            readTimeTag.classList.remove('hidden');
+        } else {
+            readTimeTag.classList.add('hidden');
+            readTimeTag.textContent = '';
+        }
+
         resultArea.classList.remove('hidden');
     }
 
@@ -146,43 +158,88 @@ document.addEventListener('DOMContentLoaded', async () => {
         errorArea.classList.add('hidden');
         resultArea.classList.add('hidden');
         actionArea.classList.remove('hidden');
+        readTimeTag.classList.add('hidden');
+        readTimeTag.textContent = '';
     }
 
-    // Extremely simple regex markdown parser
-    function parseMarkdown(md) {
-        let html = md;
-        
-        // Escape HTML
-        html = html.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        
-        // Headers
-        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-        
-        // Bold and Italic
-        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        
-        // Lists
-        html = html.replace(/^\s*[-*] (.*)$/gim, '<ul><li>$1</li></ul>');
-        html = html.replace(/<\/ul>\n<ul>/g, '\n');
-        
-        html = html.replace(/^\s*\d+\. (.*)$/gim, '<ol><li>$1</li></ol>');
-        html = html.replace(/<\/ol>\n<ol>/g, '\n');
+    function parseSummarySections(text) {
+        const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+        let readTime = '';
+        const contentLines = [];
+        const insights = [];
+        const overviewLines = [];
+        let collectingOverview = true;
 
-        // Paragraphs
-        html = html.replace(/\n\n+/g, '</p><p>');
-        html = html.replace(/\n/g, '<br>');
-        
-        // Clean up list br tags
-        html = html.replace(/<br><ul>/g, '<ul>');
-        html = html.replace(/<\/ul><br>/g, '</ul>');
-        html = html.replace(/<br><ol>/g, '<ol>');
-        html = html.replace(/<\/ol><br>/g, '</ol>');
-        html = html.replace(/<br><li>/g, '<li>');
-        html = html.replace(/<\/li><br>/g, '</li>');
+        for (const rawLine of lines) {
+            const line = rawLine.replace(/^#{1,6}\s*/, '').trim();
+            const readMatch = line.match(/^estimated\s+reading\s+time\s*:\s*(.+)$/i);
+            if (readMatch) {
+                readTime = `Read time: ${readMatch[1].trim()}`;
+                continue;
+            }
+            contentLines.push(line);
+        }
 
-        return `<p>${html}</p>`.replace(/<p><\/p>/g, '');
+        for (const line of contentLines) {
+            const bulletMatch = line.match(/^(?:[-*]|\d+\.)\s+(.*)$/);
+            if (/^key insights?:?/i.test(line)) {
+                collectingOverview = false;
+                continue;
+            }
+            if (bulletMatch) {
+                collectingOverview = false;
+                insights.push(bulletMatch[1].trim());
+                continue;
+            }
+            if (collectingOverview) {
+                overviewLines.push(line);
+            } else {
+                insights.push(line);
+            }
+        }
+
+        let overview = overviewLines.join(' ').trim();
+        if (!overview) {
+            overview = contentLines.find(line => !/^(?:[-*]|\d+\.)\s+/.test(line)) || '';
+        }
+
+        if (!insights.length) {
+            const fallback = contentLines
+                .join(' ')
+                .split(/[.!?]\s+/)
+                .map(item => item.trim())
+                .filter(Boolean)
+                .slice(1, 6);
+            insights.push(...fallback);
+        }
+
+        return { overview, insights, readTime };
+    }
+
+    function renderSummaryHtml({ overview, insights }) {
+        const renderedInsights = insights
+            .filter(Boolean)
+            .map(item => `<li>${escapeHtml(item)}</li>`)
+            .join('');
+
+        return `
+            <section class="summary-section">
+                <h4>Overview</h4>
+                <p>${escapeHtml(overview || 'No overview available.')}</p>
+            </section>
+            <section class="summary-section">
+                <h4>Key Insights</h4>
+                <ul class="insight-list">${renderedInsights || '<li>No insights available.</li>'}</ul>
+            </section>
+        `;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 });
